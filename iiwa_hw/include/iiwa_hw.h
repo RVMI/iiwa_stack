@@ -44,7 +44,7 @@
 // iiwa_msgs and ROS inteface includes
 #include <iiwa_msgs/JointPosition.h>
 #include <iiwa_msgs/JointTorque.h>
-#include "iiwa_ros.h"
+#include "iiwa_ros/iiwa_ros.h"
 
 // ROS headers
 #include <control_toolbox/filters.h>
