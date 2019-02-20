@@ -1,5 +1,35 @@
 #!/usr/bin/env python2
 
+# Copyright (C) 2016-2017 Salvatore Virga - salvo.virga@tum.de, Marco Esposito - marco.esposito@tum.de
+# Technische Universität München
+# Chair for Computer Aided Medical Procedures and Augmented Reality
+# Fakultät für Informatik / I16, Boltzmannstraße 3, 85748 Garching bei München, Germany
+# http://campar.in.tum.de
+# All rights reserved.
+#
+# David Wuthier - daw@mp.aau.dk
+# Aalborg University
+# Robotics, Vision and Machine Intelligence Laboratory
+# Department of Materials and Production
+# A. C. Meyers Vaenge 15, 2450 Copenhagen SV, Denmark
+# http://rvmi.aau.dk/
+#
+# Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer
+#    in the documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES,
+# INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+# IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+# OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+# OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+# THE POSSIBILITY OF SUCH DAMAGE.
+
+
 import rospy
 
 from iiwa_msgs.msg import JointPosition
@@ -61,22 +91,31 @@ def Hrrt(ty, tz, l):
                  [-sy, 0.0, cy, l],
                  [0.0, 0.0, 0.0, 1.0]])
 
-class IiwaKinematics(object):
+class IiwaController(object):
   def __init__(self):
-    init_node('iiwa_kinematics', log_level = DEBUG)
-
-    tool_length = get_param('~tool_length', 0.0)
-
-    self.l02 = 0.34
-    self.l24 = 0.4
-    self.l46 = 0.4
-    self.l6E = 0.126 + tool_length
-
-    self.tr = 0.0
-    self.v = 1.0
+    init_node('iiwa_controller', log_level = INFO)
 
     hardware_interface = get_param('~hardware_interface', 'PositionJointInterface')
     self.robot_name = get_param('~robot_name', 'iiwa')
+    model = get_param('~model', 'iiwa14')
+    tool_length = get_param('~tool_length', 0.0)
+
+    if model == 'iiwa7':
+      self.l02 = 0.34
+      self.l24 = 0.4
+      self.l46 = 0.4
+      self.l6E = 0.126 + tool_length
+    elif model == 'iiwa14':
+      self.l02 = 0.34
+      self.l24 = 0.4
+      self.l46 = 0.4
+      self.l6E = 0.126 + tool_length
+    else:
+      logerr('unknown robot model')
+      return
+
+    self.tr = 0.0
+    self.v = 1.0
 
     self.joint_names = ['{}_joint_1'.format(self.robot_name),
                         '{}_joint_2'.format(self.robot_name),
@@ -93,7 +132,7 @@ class IiwaKinematics(object):
 
     self.state_pose_pub = Publisher('state/CartesianPose', PoseStamped, queue_size = 1)
     self.joint_trajectory_pub = Publisher(
-        hardware_interface + '_trajectory_controller/command', JointTrajectory, queue_size = 1)
+        '{}_trajectory_controller/command'.format(hardware_interface), JointTrajectory, queue_size = 1)
 
     path_parameters_configuration_srv = Service(
         'configuration/pathParametersLin', SetPathParametersLin, self.handlePathParametersConfiguration)
@@ -202,4 +241,4 @@ class IiwaKinematics(object):
     self.joint_trajectory_pub.publish(jt)
 
 if __name__ == "__main__":
-  ik = IiwaKinematics()
+  ik = IiwaController()
