@@ -1,11 +1,12 @@
 #!/usr/bin/env python2
 
-# Copyright (C) 2016-2017 Salvatore Virga - salvo.virga@tum.de, Marco Esposito - marco.esposito@tum.de
-# Technische Universität München
+# Copyright (C) 2016-2019
+#
+# Salvatore Virga - salvo.virga@tum.de, Marco Esposito - marco.esposito@tum.de
+# Technische Universitaet Muenchen
 # Chair for Computer Aided Medical Procedures and Augmented Reality
-# Fakultät für Informatik / I16, Boltzmannstraße 3, 85748 Garching bei München, Germany
+# Fakultaet fuer Informatik / I16, Boltzmannstrasse 3, 85748 Garching bei Muenchen, Germany
 # http://campar.in.tum.de
-# All rights reserved.
 #
 # David Wuthier - daw@mp.aau.dk
 # Aalborg University
@@ -13,6 +14,8 @@
 # Department of Materials and Production
 # A. C. Meyers Vaenge 15, 2450 Copenhagen SV, Denmark
 # http://rvmi.aau.dk/
+#
+# All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
 #
@@ -34,13 +37,14 @@ import rospy
 
 from iiwa_msgs.msg import JointPosition
 from iiwa_msgs.srv import ConfigureSmartServo, ConfigureSmartServoRequest, ConfigureSmartServoResponse
+from iiwa_msgs.srv import SetPathParameters, SetPathParametersRequest, SetPathParametersResponse
 from iiwa_msgs.srv import SetPathParametersLin, SetPathParametersLinRequest, SetPathParametersLinResponse
 from numpy import pi, sqrt, cos, sin, arctan2, array, matrix
 from numpy.linalg import norm
 from geometry_msgs.msg import Point, Quaternion, Pose, PoseStamped, WrenchStamped
 from sensor_msgs.msg import JointState
 from trajectory_msgs.msg import JointTrajectoryPoint, JointTrajectory
-from rospy import DEBUG, logdebug, loginfo, loginfo_throttle, logwarn, logerr
+from rospy import DEBUG, INFO, logdebug, loginfo, loginfo_throttle, logwarn, logerr
 from rospy import Subscriber, Publisher, Service, ServiceProxy
 from rospy import ROSException
 from rospy import init_node, get_param, spin
@@ -103,16 +107,15 @@ class IiwaController(object):
     if model == 'iiwa7':
       self.l02 = 0.34
       self.l24 = 0.4
-      self.l46 = 0.4
-      self.l6E = 0.126 + tool_length
     elif model == 'iiwa14':
-      self.l02 = 0.34
-      self.l24 = 0.4
-      self.l46 = 0.4
-      self.l6E = 0.126 + tool_length
+      self.l02 = 0.36
+      self.l24 = 0.42
     else:
       logerr('unknown robot model')
       return
+
+    self.l46 = 0.4
+    self.l6E = 0.126 + tool_length
 
     self.tr = 0.0
     self.v = 1.0
@@ -126,7 +129,8 @@ class IiwaController(object):
                         '{}_joint_7'.format(self.robot_name)]
 
     joint_states_sub = Subscriber('joint_states', JointState, self.jointStatesCb, queue_size = 1)
-    command_pose_sub = Subscriber('command/CartesianPoseLin', PoseStamped, self.commandPoseCb, queue_size = 1)
+    command_pose_sub = Subscriber('command/CartesianPose', PoseStamped, self.commandPoseCb, queue_size = 1)
+    command_pose_lin_sub = Subscriber('command/CartesianPoseLin', PoseStamped, self.commandPoseLinCb, queue_size = 1)
     redundancy_sub = Subscriber('command/redundancy', Float64, self.redundancyCb, queue_size = 1)
     joint_position_sub = Subscriber('command/JointPosition', JointPosition, self.jointPositionCb, queue_size = 1)
 
@@ -135,7 +139,9 @@ class IiwaController(object):
         '{}_trajectory_controller/command'.format(hardware_interface), JointTrajectory, queue_size = 1)
 
     path_parameters_configuration_srv = Service(
-        'configuration/pathParametersLin', SetPathParametersLin, self.handlePathParametersConfiguration)
+        'configuration/pathParameters', SetPathParameters, self.handlePathParametersConfiguration)
+    path_parameters_lin_configuration_srv = Service(
+        'configuration/pathParametersLin', SetPathParametersLin, self.handlePathParametersLinConfiguration)
     smart_servo_configuration_srv = Service(
         'configuration/configureSmartServo', ConfigureSmartServo, self.handleSmartServoConfiguration)
 
@@ -150,6 +156,17 @@ class IiwaController(object):
 
   def handlePathParametersConfiguration(self, request):
     loginfo('setting path parameters')
+
+    v = request.joint_relative_velocity
+
+    if v >= 0.0 and v <= 1.0:
+      self.v = linearlyMap(v, 0.0, 1.0, 2.0, 0.5)
+      return SetPathParametersResponse(True, '')
+    else:
+      return SetPathParametersResponse(False, '')
+
+  def handlePathParametersLinConfiguration(self, request):
+    loginfo('setting path parameters linear')
 
     v = request.max_cartesian_velocity.linear.x
 
@@ -176,7 +193,7 @@ class IiwaController(object):
     self.state_pose_pub.publish(
         PoseStamped(
           header = Header(
-            frame_id = self.robot_name + '_link_0'),
+            frame_id = '{}_link_0'.format(self.robot_name)),
           pose = Pose(
             position = Point(
               x = H0E[0,3], y = H0E[1,3], z = H0E[2,3]),
@@ -203,8 +220,13 @@ class IiwaController(object):
     p60 = pE0 - p6E0
     p260 = p60 - p20
 
-    (tys, tzs) = rr(p260)
     s = norm(p260)
+
+    if s > self.l24 + self.l46:
+      logwarn('invalid pose command')
+      return
+
+    (tys, tzs) = rr(p260)
     tp24z0 = 1/(2.0 * s) * (self.l24**2 - self.l46**2 + s**2)
     tp240 = matrix([[-sqrt(self.l24**2 - tp24z0**2)], [0.0], [tp24z0]])
     p240 = Ryz(tys, tzs) * Rz(self.tr) * tp240
@@ -230,6 +252,9 @@ class IiwaController(object):
     self.publishJointPositionCommand(t)
 
     logdebug('timing: %s ms', 1.0e3 * (clock() - T0))
+
+  def commandPoseLinCb(self, msg):
+    self.commandPoseCb(msg)
 
   def publishJointPositionCommand(self, t):
     jtp = JointTrajectoryPoint()
