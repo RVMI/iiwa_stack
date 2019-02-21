@@ -3,7 +3,7 @@
 
   <!-- ================================================== -->
   <!-- |    Lauch file to start Gazebo with an IIWA     | -->
-  <!-- |    and the same interface as the real robot.   | -->
+  <!-- |    and a simulated Sunrise controller.         | -->
   <!-- ================================================== -->
 
   <arg name="hardware_interface" default="PositionJointInterface" />
@@ -18,7 +18,7 @@
     <arg name="trajectory" value="$(arg trajectory)" />
   </include>
 
-  <include file="$(find iiwa_control)/launch/iiwa_controller.launch">
+  <include file="$(find iiwa_control)/launch/iiwa_sunrise.launch">
     <param name="hardware_interface" value="$(arg hardware_interface)"/>
     <param name="robot_name" value="$(arg robot_name)"/>
     <param name="model" value="$(arg model)"/>

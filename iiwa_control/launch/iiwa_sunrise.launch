@@ -6,7 +6,7 @@
   <arg name="tool_length" default="0.0"/>
 
   <group ns="$(arg robot_name)">
-    <node name="iiwa_controller" pkg="iiwa_control" type="iiwa_controller.py" output="screen">
+    <node name="iiwa_sunrise" pkg="iiwa_control" type="iiwa_sunrise.py" output="screen">
       <param name="hardware_interface" value="$(arg hardware_interface)"/>
       <param name="robot_name" value="$(arg robot_name)"/>
       <param name="model" value="$(arg model)"/>

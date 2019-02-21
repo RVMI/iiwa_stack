@@ -95,9 +95,9 @@ def Hrrt(ty, tz, l):
                  [-sy, 0.0, cy, l],
                  [0.0, 0.0, 0.0, 1.0]])
 
-class IiwaController(object):
+class IiwaSunrise(object):
   def __init__(self):
-    init_node('iiwa_controller', log_level = INFO)
+    init_node('iiwa_sunrise', log_level = INFO)
 
     hardware_interface = get_param('~hardware_interface', 'PositionJointInterface')
     self.robot_name = get_param('~robot_name', 'iiwa')
@@ -266,4 +266,4 @@ class IiwaController(object):
     self.joint_trajectory_pub.publish(jt)
 
 if __name__ == "__main__":
-  ik = IiwaController()
+  ik = IiwaSunrise()
