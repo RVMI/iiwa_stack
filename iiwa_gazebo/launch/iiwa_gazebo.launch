@@ -23,7 +23,7 @@
         <arg name="hardware_interface" value="$(arg hardware_interface)" />
         <arg name="robot_name" value="$(arg robot_name)" />
         <arg name="model" value="$(arg model)" />
-        <arg name="gui" value="$(arf gui)" />
+        <arg name="gui" value="$(arg gui)" />
     </include>
     
     <!-- Spawn controllers - it uses a JointTrajectoryController -->

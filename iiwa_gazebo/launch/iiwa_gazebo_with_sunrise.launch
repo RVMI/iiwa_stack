@@ -10,12 +10,14 @@
   <arg name="robot_name" default="iiwa" />
   <arg name="model" default="iiwa14"/>
   <arg name="trajectory" default="true"/>
+  <arg name="gui" default="false"/>
 
   <include file="$(find iiwa_gazebo)/launch/iiwa_gazebo.launch">
     <arg name="hardware_interface" value="$(arg hardware_interface)" />
     <arg name="robot_name" value="$(arg robot_name)" />
     <arg name="model" value="$(arg model)" />
     <arg name="trajectory" value="$(arg trajectory)" />
+    <arg name="gui" value="$(arg gui)" />
   </include>
 
   <include file="$(find iiwa_control)/launch/iiwa_sunrise.launch">
