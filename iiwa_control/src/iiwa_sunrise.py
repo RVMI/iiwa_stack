@@ -74,6 +74,12 @@ def rr(p):
 
   return (ty, tz)
 
+def Rx(tx):
+  (cx, sx) = trigonometry(tx)
+  return matrix([[1.0, 0.0, 0.0],
+                 [0.0,  cx, -sx],
+                 [0.0,  sx,  cx]])
+
 def Rz(tz):
   (cz, sz) = trigonometry(tz)
   return matrix([[ cz, -sz, 0.0],
@@ -103,6 +109,9 @@ class IiwaSunrise(object):
     self.robot_name = get_param('~robot_name', 'iiwa')
     model = get_param('~model', 'iiwa14')
     tool_length = get_param('~tool_length', 0.0)
+    mounting_angle = get_param('~mounting_angle', 0.0)
+
+    self.RH0 = Rx(-mounting_angle)
 
     if model == 'iiwa7':
       self.l02 = 0.34
@@ -204,18 +213,21 @@ class IiwaSunrise(object):
     T0 = clock()
 
     t = 7 * [0.0]
-    pE0 = matrix([[msg.pose.position.x],
+
+    pEH = matrix([[msg.pose.position.x],
                   [msg.pose.position.y],
                   [msg.pose.position.z]])
-    qE0 = array([msg.pose.orientation.x,
+    qEH = array([msg.pose.orientation.x,
                  msg.pose.orientation.y,
                  msg.pose.orientation.z,
                  msg.pose.orientation.w])
 
+    pE0 = self.RH0 * pEH
+    RE0 = self.RH0 * R(qEH)
+
     pE6 = matrix([[0.0], [0.0], [self.l6E]])
     p20 = matrix([[0.0], [0.0], [self.l02]])
 
-    RE0 = R(qE0)
     p6E0 = RE0 * pE6
     p60 = pE0 - p6E0
     p260 = p60 - p20
