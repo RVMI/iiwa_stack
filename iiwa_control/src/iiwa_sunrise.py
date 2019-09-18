@@ -48,7 +48,7 @@ from rospy import DEBUG, INFO, logdebug, loginfo, loginfo_throttle, logwarn, log
 from rospy import Subscriber, Publisher, Service, ServiceProxy
 from rospy import ROSException
 from rospy import init_node, get_param, spin
-from tf.transformations import quaternion_from_matrix, quaternion_matrix
+from tf.transformations import quaternion_from_matrix, quaternion_matrix, identity_matrix
 from std_msgs.msg import Float64, Header
 from time import clock
 
@@ -111,7 +111,10 @@ class IiwaSunrise(object):
     tool_length = get_param('~tool_length', 0.0)
     mounting_angle = get_param('~mounting_angle', 0.0)
 
-    self.RH0 = Rx(-mounting_angle)
+    self.R0H = Rx(mounting_angle)
+
+    self.HH0 = matrix(identity_matrix())
+    self.HH0[:3,:3] = self.R0H
 
     if model == 'iiwa7':
       self.l02 = 0.34
@@ -196,18 +199,18 @@ class IiwaSunrise(object):
     H46 = Hrrt(t[5], t[4], self.l46)
     H6E = Hrrt(0.0, t[6], self.l6E)
 
-    H0E = H02 * H24 * H46 * H6E
-    q0E = quaternion_from_matrix(H0E)
+    HHE = self.HH0 * H02 * H24 * H46 * H6E
+    qHE = quaternion_from_matrix(HHE)
 
     self.state_pose_pub.publish(
         PoseStamped(
           header = Header(
-            frame_id = '{}_link_0'.format(self.robot_name)),
+            frame_id = '{}_link_0_horizontal'.format(self.robot_name)),
           pose = Pose(
             position = Point(
-              x = H0E[0,3], y = H0E[1,3], z = H0E[2,3]),
+              x = HHE[0,3], y = HHE[1,3], z = HHE[2,3]),
             orientation = Quaternion(
-              x = q0E[0], y = q0E[1], z = q0E[2], w = q0E[3]))))
+              x = qHE[0], y = qHE[1], z = qHE[2], w = qHE[3]))))
 
   def commandPoseCb(self, msg):
     T0 = clock()
@@ -222,8 +225,8 @@ class IiwaSunrise(object):
                  msg.pose.orientation.z,
                  msg.pose.orientation.w])
 
-    pE0 = self.RH0 * pEH
-    RE0 = self.RH0 * R(qEH)
+    pE0 = self.R0H.T * pEH
+    RE0 = self.R0H.T * R(qEH)
 
     pE6 = matrix([[0.0], [0.0], [self.l6E]])
     p20 = matrix([[0.0], [0.0], [self.l02]])
