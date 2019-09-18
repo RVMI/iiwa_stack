@@ -248,8 +248,10 @@ class IiwaSunrise(object):
       logwarn('invalid pose command')
       return
 
+    ta = 0.0 if pE0[0] >= 0.0 else pi
+
     tp240 = matrix([[-sqrt(self.l24**2 - tp24z0**2)], [0.0], [tp24z0]])
-    p240 = Ryz(tys, tzs) * Rz(self.tr) * tp240
+    p240 = Ryz(tys, tzs) * Rz(self.tr + ta) * tp240
     (t[1], t[0]) = rr(p240)
 
     R20 = Ryz(t[1], t[0])
