@@ -4,10 +4,11 @@ import rospy
 import sys, select, termios, tty
 
 from std_msgs.msg import String, Header, Float64
-from rospy import init_node, get_param, loginfo, Publisher
-from geometry_msgs.msg import PoseStamped
+from rospy import init_node, get_param, loginfo, Publisher, Time
+from geometry_msgs.msg import PoseStamped, TransformStamped
 from low_level_logics.compact_utilities import CompactTransform
 from numpy import pi
+from tf2_ros import TransformBroadcaster
 
 def getKey():
   tty.setraw(sys.stdin.fileno())
@@ -27,6 +28,7 @@ if __name__=="__main__":
   pose_pub = Publisher('command/CartesianPose', PoseStamped, queue_size = 1)
   redundancy_pub = Publisher('command/redundancy', Float64, queue_size = 1)
   robot_name = get_param('~robot_name', 'iiwa')
+  tf_broadcaster = TransformBroadcaster()
 
   cmd = {'X': 0.5, 'Y': 0.0, 'Z': 0.4, 'A': 0.0, 'B': pi, 'C': 0.0, 'R': 0.0}
 
@@ -58,13 +60,23 @@ if __name__=="__main__":
 
         printCmd(cmd)
 
+        ct = CompactTransform.fromXYZRPY(cmd['X'], cmd['Y'], cmd['Z'], cmd['C'], cmd['B'], cmd['A'])
+
         redundancy_pub.publish(Float64(cmd['R']))
+
         pose_pub.publish(
             PoseStamped(
               header = Header(
                 frame_id = '{}_link_0_horizontal'.format(robot_name)),
-              pose = CompactTransform.fromXYZRPY(
-                cmd['X'], cmd['Y'], cmd['Z'], cmd['C'], cmd['B'], cmd['A']).toPose()))
+              pose = ct.toPose()))
+
+        tf_broadcaster.sendTransform(
+            TransformStamped(
+              child_frame_id = '{}/teleop'.format(robot_name),
+              header = Header(
+                frame_id = '{}_link_0_horizontal'.format(robot_name),
+                stamp = Time.now()),
+              transform = ct.toTransform()))
       else:
         printCmd(cmd)
 
