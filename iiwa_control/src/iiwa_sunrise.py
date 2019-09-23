@@ -61,11 +61,11 @@ def R(q):
 def trigonometry(t):
   return (cos(t), sin(t))
 
-def rr(p):
+def rr(p, fix = True):
   ty = arctan2(sqrt(p[0,0]**2 + p[1,0]**2), p[2,0])
   tz = arctan2(p[1,0], p[0,0])
 
-  if tz < -pi/2.0:
+  if fix and tz < -pi/2.0:
     ty = -ty
     tz += pi
   elif tz > pi/2.0:
@@ -140,12 +140,6 @@ class IiwaSunrise(object):
                         '{}_joint_6'.format(self.robot_name),
                         '{}_joint_7'.format(self.robot_name)]
 
-    joint_states_sub = Subscriber('joint_states', JointState, self.jointStatesCb, queue_size = 1)
-    command_pose_sub = Subscriber('command/CartesianPose', PoseStamped, self.commandPoseCb, queue_size = 1)
-    command_pose_lin_sub = Subscriber('command/CartesianPoseLin', PoseStamped, self.commandPoseLinCb, queue_size = 1)
-    redundancy_sub = Subscriber('command/redundancy', Float64, self.redundancyCb, queue_size = 1)
-    joint_position_sub = Subscriber('command/JointPosition', JointPosition, self.jointPositionCb, queue_size = 1)
-
     self.state_pose_pub = Publisher('state/CartesianPose', PoseStamped, queue_size = 1)
     self.joint_trajectory_pub = Publisher(
         '{}_trajectory_controller/command'.format(hardware_interface), JointTrajectory, queue_size = 1)
@@ -156,6 +150,12 @@ class IiwaSunrise(object):
         'configuration/pathParametersLin', SetPathParametersLin, self.handlePathParametersLinConfiguration)
     smart_servo_configuration_srv = Service(
         'configuration/configureSmartServo', ConfigureSmartServo, self.handleSmartServoConfiguration)
+
+    joint_states_sub = Subscriber('joint_states', JointState, self.jointStatesCb, queue_size = 1)
+    command_pose_sub = Subscriber('command/CartesianPose', PoseStamped, self.commandPoseCb, queue_size = 1)
+    command_pose_lin_sub = Subscriber('command/CartesianPoseLin', PoseStamped, self.commandPoseLinCb, queue_size = 1)
+    redundancy_sub = Subscriber('command/redundancy', Float64, self.redundancyCb, queue_size = 1)
+    joint_position_sub = Subscriber('command/JointPosition', JointPosition, self.jointPositionCb, queue_size = 1)
 
     spin()
 
@@ -248,11 +248,9 @@ class IiwaSunrise(object):
       logwarn('invalid pose command')
       return
 
-    ta = 0.0 if pE0[0] >= 0.0 else pi
-
     tp240 = matrix([[-sqrt(self.l24**2 - tp24z0**2)], [0.0], [tp24z0]])
-    p240 = Ryz(tys, tzs) * Rz(self.tr + ta) * tp240
-    (t[1], t[0]) = rr(p240)
+    p240 = Ryz(tys, tzs) * Rz(self.tr + 0.0 if pE0[0] >= 0.0 else pi) * tp240
+    (t[1], t[0]) = rr(p240, False)
 
     R20 = Ryz(t[1], t[0])
     p40 = p20 + p240

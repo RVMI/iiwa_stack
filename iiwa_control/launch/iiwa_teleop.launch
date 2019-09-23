@@ -1,0 +1,9 @@
+<launch>
+  <arg name="robot" default="iiwa"/>
+
+  <group ns="$(arg robot)">
+    <node name="iiwa_teleop" type="iiwa_teleop.py" pkg="iiwa_control" output="screen">
+      <param name="robot_name" value="$(arg robot)"/>
+    </node>
+  </group>
+</launch>
